@@ -5,13 +5,13 @@ use thiserror::Error;
 use std::io;
 use tui::Terminal;
 use tui::backend::CrosstermBackend;
-use tui::layout::{Layout, Rect, Direction, Constraint};
-use tui::widgets::{Widget, Block, Borders};
+use tui::layout::{Layout, Rect, Direction, Constraint, Alignment};
+use tui::widgets::{Widget, Block, Borders, Paragraph, BorderType};
+use tui::style::{Color, Style};
 use crossterm::terminal::*;
-use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc;
 use std::thread;
-use crossterm::event::{Event as CEvent};
+use crossterm::event::{Event as CEvent, KeyCode};
 use crossterm::event;
 
 
@@ -106,17 +106,33 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Constraint::Length(3)
                     ].as_ref()).split(size);
 
-            let block = Block::default()
-                .title("Block")
-                .borders(Borders::ALL);
+            let copyright = Paragraph::new("pet-CLI 2020 - all rights reserved")
+                .style(Style::default().fg(Color::LightCyan))
+                .alignment(Alignment::Center)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .style(Style::default().fg(Color::White))
+                        .title("Copyright")
+                        .border_type(BorderType::Plain),
+                );
 
-            rect.render_widget(block, size);
+            rect.render_widget(copyright, chunks[2]);
 
         })?;
+
+        match receiver.recv()? {
+            Event::Input(event) => match event.code {
+                KeyCode::Char('q') => {
+                    disable_raw_mode()?;
+                    terminal.show_cursor()?;
+                    break;
+                },
+                _ => {}
+            },
+            Event::Tick => {}
+        }
     }
-
-
-
 
     Ok(())
 }
