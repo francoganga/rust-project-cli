@@ -6,8 +6,9 @@ use std::io;
 use tui::Terminal;
 use tui::backend::CrosstermBackend;
 use tui::layout::{Layout, Rect, Direction, Constraint, Alignment};
-use tui::widgets::{Widget, Block, Borders, Paragraph, BorderType};
-use tui::style::{Color, Style};
+use tui::widgets::{Widget, Block, Borders, Paragraph, BorderType, Tabs};
+use tui::style::{Color, Style, Modifier};
+use tui::text::{Spans, Span};
 use crossterm::terminal::*;
 use std::sync::mpsc;
 use std::thread;
@@ -93,6 +94,10 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+
+    let menu_titles = vec!["Home", "Pets", "Add", "Delete", "Quit"];
+    let mut active_menu_item = MenuItem::Home;
+
     loop {
         terminal.draw(|rect| {
             let size = rect.size();
@@ -117,6 +122,37 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .border_type(BorderType::Plain),
                 );
 
+            let menu = menu_titles
+                .iter()
+                .map(|t| {
+                    let (first, rest) = t.split_at(1);
+                    Spans::from(vec![
+                        Span::styled(
+                            first,
+                            Style::default()
+                                .fg(Color::Yellow)
+                                .add_modifier(Modifier::UNDERLINED),
+                        ),
+                        Span::styled(rest, Style::default().fg(Color::White)),
+                    ])
+                })
+                .collect();
+
+            let tabs = Tabs::new(menu)
+                .select(active_menu_item.into())
+                .block(Block::default().title("Menu").borders(Borders::ALL))
+                .style(Style::default().fg(Color::White))
+                .highlight_style(Style::default().fg(Color::Yellow))
+                .divider(Span::raw("|"));
+
+            rect.render_widget(tabs, chunks[0]);
+
+            match active_menu_item {
+                MenuItem::Home => rect.render_widget(render_home(), chunks[1]),
+                _ => {}
+            }
+
+
             rect.render_widget(copyright, chunks[2]);
 
         })?;
@@ -128,6 +164,8 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                     terminal.show_cursor()?;
                     break;
                 },
+                KeyCode::Char('h') => active_menu_item = MenuItem::Home,
+                KeyCode::Char('p') => active_menu_item = MenuItem::Pets,
                 _ => {}
             },
             Event::Tick => {}
@@ -135,4 +173,29 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+fn render_home<'a>() -> Paragraph<'a> {
+    let home = Paragraph::new(vec![
+        Spans::from(vec![Span::raw("")]),
+        Spans::from(vec![Span::raw("Welcome")]),
+        Spans::from(vec![Span::raw("")]),
+        Spans::from(vec![Span::raw("to")]),
+        Spans::from(vec![Span::raw("")]),
+        Spans::from(vec![Span::styled(
+            "pet-CLI",
+            Style::default().fg(Color::LightBlue),
+        )]),
+        Spans::from(vec![Span::raw("")]),
+        Spans::from(vec![Span::raw("Press 'p' to access pets, 'a' to add random new pets and 'd' to delete the currently selected pet.")]),
+    ])
+    .alignment(Alignment::Center)
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .style(Style::default().fg(Color::White))
+            .title("Home")
+            .border_type(BorderType::Plain),
+    );
+    home
 }
